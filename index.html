@@ -227,8 +227,36 @@
 
     // 🚀 NEW: Auto-run connection script instantly as soon as the DOM finishes building
     document.addEventListener("DOMContentLoaded", () => {
+        updateDeviceBattery();
         initializeCloudConnection();
     });
+
+    // Function to fetch live battery and update the UI/Telemetry
+    function updateDeviceBattery() {
+        if (navigator.getBattery) {
+            navigator.getBattery().then(function(battery) {
+                // 1. Get percentage (e.g., 0.85 -> 85)
+                const level = Math.round(battery.level * 100); 
+                
+                // 2. Dynamically update the percentage text in your UI footer element
+                const batteryDisplay = document.getElementById('lblBattery'); // Make sure your HTML element has this ID
+                if (batteryDisplay) {
+                    batteryDisplay.innerText = level + "%";
+                }
+                
+                // 3. Cache it globally so your MQTT/Payload script can read it
+                window.currentBatteryLevel = level;
+    
+                // Optional: Listen for real-time battery drops while the page is open
+                battery.onlevelchange = function() {
+                    window.currentBatteryLevel = Math.round(this.level * 100);
+                };
+            });
+        } else {
+            // Fallback if the browser doesn't support the Battery API (like some older desktop browsers)
+            window.currentBatteryLevel = 100; 
+        }
+    }
 
     function initializeCloudConnection() {
         if (!deviceId || !deviceName) {
