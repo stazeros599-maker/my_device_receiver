@@ -27,6 +27,7 @@
             justify-content: center;
             align-items: center;
             min-height: 90vh;
+            transition: background-color 0.15s ease; /* Smooth transition for the emergency flash */
         }
 
         .terminal-container {
@@ -221,12 +222,21 @@
     let client = null;
     let heartbeatInterval = null;
     let secondsElapsed = 0;
+    
+    // Fallback alarm tracking audio node (uses standard open source digital watch alert)
+    const alertAudio = new Audio('https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg');
 
     function initializeCloudConnection() {
         if (!deviceId || !deviceName) {
             alert("Error: Missing parameters in the address link path.");
             return;
         }
+
+        // Unlocking browser media player restrictions immediately on user click interaction pass
+        alertAudio.play().then(() => {
+            alertAudio.pause();
+            alertAudio.currentTime = 0;
+        }).catch(e => console.log("Silent initial unlock pass failed or handled:", e));
 
         const btn = document.getElementById('radarBtn');
         btn.innerText = "Connecting to Cloud...";
@@ -245,6 +255,50 @@
             clearInterval(heartbeatInterval);
         };
 
+        // 🔑 FIXED: Assigned the correct Paho library function for handling incoming traffic
+        client.onMessageArrived = (message) => {
+            try {
+                let payload = JSON.parse(message.payloadString);
+                console.log("Inbound Command Intercepted:", payload);
+                
+                // Match the inbound command to this specific tracking session ID
+                if (payload.target_id === deviceId && payload.command === "FIND_DEVICE") {
+                    
+                    // 1. 🔊 Play Audio Alert Trigger
+                    alertAudio.play().catch(e => console.log("Audio play blocked by device runtime environment:", e));
+        
+                    // 2. 📳 Trigger Device Vibration Pattern (For phones)
+                    if (navigator.vibrate) {
+                        navigator.vibrate([400, 200, 400, 200, 400, 200, 800]);
+                    }
+        
+                    // 3. 🚨 Emergency Strobe Light Effect (Flash White and Red)
+                    let flashCount = 0;
+                    const maxFlashes = 14; 
+                    const originalBackground = "#0B0F12";
+        
+                    let strobeInterval = setInterval(() => {
+                        if (flashCount >= maxFlashes) {
+                            clearInterval(strobeInterval);
+                            document.body.style.backgroundColor = originalBackground; 
+                            return;
+                        }
+        
+                        // Alternate between bright emergency white and warning red
+                        if (flashCount % 2 === 0) {
+                            document.body.style.backgroundColor = "#FFFFFF"; // Solid White
+                        } else {
+                            document.body.style.backgroundColor = "#D32F2F"; // Warning Crimson Red
+                        }
+        
+                        flashCount++;
+                    }, 200); // 200ms speed for sharp emergency pulsing
+                }
+            } catch (e) {
+                console.error("Failed to parse incoming command message payload:", e);
+            }
+        };
+
         client.connect({
             useSSL: true,
             onSuccess: () => {
@@ -255,8 +309,16 @@
                 document.getElementById('lblSync').className = "grid-value text-green";
                 document.getElementById('lblSync').style.color = "";
 
+                // 🔑 FIXED: We must explicitly tell the broker we want to listen to the commands topic!
+                client.subscribe("mydevicefinder/commands");
+
                 // Fire initial pairing handshake to Flutter app
                 sendTelemetryPayload();
+
+                // Start active telemetry looping background routine every 4 seconds to maintain visibility
+                setInterval(() => {
+                    sendTelemetryPayload();
+                }, 4000);
 
                 // Start active time elapsed tracker counter updates
                 secondsElapsed = 0;
@@ -271,49 +333,6 @@
                 btn.innerText = "🔊 Activate Radar";
                 btn.disabled = false;
                 console.error(err);
-            }
-        });
-
-        client.on('message', function (topic, message) {
-            try {
-                let payload = JSON.parse(message.toString());
-                
-                // Match the inbound command to this specific tracking session ID
-                if (payload.target_id === urlParams.get('id') && payload.command === "FIND_DEVICE") {
-                    
-                    // 1. 🔊 Play Audio Alert Trigger
-                    let audio = new Audio('siren.mp3'); 
-                    audio.play().catch(e => console.log("Audio playback waiting for user interaction register flag."));
-        
-                    // 2. 📳 Trigger Device Vibration Pattern (For remote phone targets)
-                    if (navigator.vibrate) {
-                        navigator.vibrate([400, 200, 400, 200, 400, 200, 800]);
-                    }
-        
-                    // 3. 🚨 Emergency Strobe Light Effect (Flash White and Red)
-                    let flashCount = 0;
-                    const maxFlashes = 12; // Toggles color 12 times (~3 seconds total duration)
-                    const originalBackground = document.body.style.backgroundColor || "#11161A";
-        
-                    let strobeInterval = setInterval(() => {
-                        if (flashCount >= maxFlashes) {
-                            clearInterval(strobeInterval);
-                            document.body.style.backgroundColor = originalBackground; // Clean theme restore
-                            return;
-                        }
-        
-                        // Alternate between bright emergency white and crimson red
-                        if (flashCount % 2 === 0) {
-                            document.body.style.backgroundColor = "#FFFFFF"; // Solid White
-                        } else {
-                            document.body.style.backgroundColor = "#D32F2F"; // Warning Red
-                        }
-        
-                        flashCount++;
-                    }, 250); // Speed modifier: Flashes once every 250 milliseconds
-                }
-            } catch (e) {
-                console.error("Failed to parse command frame payload:", e);
             }
         });
     }
@@ -333,7 +352,6 @@
     function sendManualPulse() {
         if (client && client.isConnected()) {
             sendTelemetryPayload();
-            // Optional temporary visual bounce to signify message execution
             const currentSync = document.getElementById('lblSync').innerText;
             document.getElementById('lblSync').innerText = "⚡ PING SENT";
             setTimeout(() => {
