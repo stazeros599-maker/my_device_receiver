@@ -373,6 +373,7 @@
             const payload = JSON.stringify({
                 id: deviceId,
                 name: decodeURIComponent(deviceName)
+                battery: window.currentBatteryLevel || 100 // Sends the live data to the backend!
             });
             const message = new Paho.MQTT.Message(payload);
             message.destinationName = "mydevicefinder/telemetry";
