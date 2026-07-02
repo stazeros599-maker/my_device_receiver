@@ -380,7 +380,7 @@
         if (client && client.isConnected()) {
             const payload = JSON.stringify({
                 id: deviceId,
-                name: decodeURIComponent(deviceName), // Added the missing comma right here!
+                name: decodeURIComponent(deviceName), 
                 battery: window.currentBatteryLevel || 100 
             });
             const message = new Paho.MQTT.Message(payload);
