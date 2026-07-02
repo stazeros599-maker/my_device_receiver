@@ -2,21 +2,210 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Global Device Receiver Node</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tracking Mode Terminal</title>
     <!-- Include the MQTT WebSocket Library via CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js" type="text/javascript"></script>
     <style>
-        body { background-color: #11161A; color: white; font-family: sans-serif; text-align: center; padding-top: 50px; }
-        .status-box { padding: 20px; background: #1A2229; border-radius: 8px; display: inline-block; margin-top: 20px; }
-        .online { color: #4CAF50; font-weight: bold; }
+        :root {
+            --bg-deep: #0B0F12;
+            --card-surface: #151C24;
+            --card-sub: #1A232E;
+            --neon-green: #4CAF50;
+            --warning-orange: #FFB300;
+            --text-primary: #FFFFFF;
+            --text-secondary: #8E9AA8;
+        }
+
+        body {
+            background-color: var(--bg-deep);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 30px 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 90vh;
+        }
+
+        .terminal-container {
+            width: 100%;
+            max-width: 480px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Top Status Banner */
+        .status-banner {
+            border: 2px dashed var(--neon-green);
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 16px;
+            letter-spacing: 1.5px;
+            color: var(--neon-green);
+            text-transform: uppercase;
+        }
+
+        /* Main Center Card */
+        .main-card {
+            background-color: var(--card-surface);
+            border-radius: 16px;
+            padding: 35px 25px;
+            text-align: center;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+            border: 1px solid #232D3A;
+        }
+
+        .warning-icon {
+            color: var(--warning-orange);
+            font-size: 50px;
+            margin-bottom: 15px;
+            display: inline-block;
+        }
+
+        .card-title {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            margin: 0 0 12px 0;
+            text-transform: uppercase;
+        }
+
+        .card-description {
+            color: var(--text-secondary);
+            font-size: 14px;
+            line-height: 1.5;
+            margin: 0 0 25px 0;
+        }
+
+        /* Interactive Action Button */
+        .action-btn {
+            background-color: var(--neon-green);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            width: 100%;
+            padding: 16px;
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            text-transform: uppercase;
+            box-shadow: 0 4px 20px rgba(76, 175, 80, 0.3);
+            transition: transform 0.1s ease, background-color 0.2s ease;
+        }
+
+        .action-btn:active {
+            transform: scale(0.98);
+        }
+
+        .action-btn.connected {
+            background-color: #2E7D32;
+            cursor: default;
+            box-shadow: none;
+        }
+
+        /* Telemetry Diagnostic Grid */
+        .telemetry-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .grid-item {
+            background-color: var(--card-surface);
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid #1F2A37;
+        }
+
+        .grid-label {
+            color: var(--text-secondary);
+            font-size: 11px;
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+
+        .grid-value {
+            font-size: 16px;
+            font-weight: 700;
+            font-family: monospace, sans-serif;
+        }
+
+        .text-green {
+            color: var(--neon-green);
+        }
+
+        /* Outline Test Button at Bottom */
+        .test-trigger-btn {
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid #232D3A;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .test-trigger-btn:hover {
+            color: white;
+            border-color: var(--text-secondary);
+        }
     </style>
 </head>
 <body>
 
-<h1>Cloud Device Receiver Terminal</h1>
-<div class="status-box">
-    <p>Device Name: <span id="devName">Awaiting Configuration...</span></p>
-    <p>Cloud Relay Status: <span id="netStatus" style="color: orange;">Connecting to HiveMQ Broker...</span></p>
+<div class="terminal-container">
+    <!-- Top Status Banner -->
+    <div class="status-banner">!! Tracking Mode Active !!</div>
+
+    <!-- Main Audio Override Gate Card -->
+    <div class="main-card">
+        <span class="warning-icon">⚠️</span>
+        <h2 class="card-title">Initialize Web Audio</h2>
+        <p class="card-description">
+            Modern web browsers block audio from playing automatically. Click below to register user interaction and activate tracking overrides.
+        </p>
+        <button id="radarBtn" class="action-btn" onclick="initializeCloudConnection()">
+            🔊 Activate Radar
+        </button>
+    </div>
+
+    <!-- Telemetry Information Sub-Grid -->
+    <div class="telemetry-grid">
+        <div class="grid-item">
+            <div class="grid-label">Assigned Target Token</div>
+            <div id="lblToken" class="grid-value">Awaiting Link...</div>
+        </div>
+        <div class="grid-item">
+            <div class="grid-label">Device Battery Level</div>
+            <div class="grid-value">100%</div>
+        </div>
+        <div class="grid-item">
+            <div class="grid-label">Heartbeat Keep-Alive</div>
+            <div id="lblHeartbeat" class="grid-value">--</div>
+        </div>
+        <div class="grid-item">
+            <div class="grid-label">Network Sync Signal</div>
+            <div id="lblSync" class="grid-value" style="color: orange;">Disconnected</div>
+        </div>
+    </div>
+
+    <!-- Manual Simulation Executor Button -->
+    <button class="test-trigger-btn" onclick="sendManualPulse()">
+        Test Execution: Trigger Inbound Flutter App Pulse
+    </button>
 </div>
 
 <script>
@@ -24,41 +213,92 @@
     const deviceId = urlParams.get('id');
     const deviceName = urlParams.get('name');
 
-    if (deviceId && deviceName) {
-        document.getElementById('devName').innerText = decodeURIComponent(deviceName);
+    // Display the incoming URL targets inside the layout rows immediately
+    if (deviceId) {
+        document.getElementById('lblToken').innerText = deviceId;
+    }
 
-        // Connect to HiveMQ public broker using WebSockets (port 8000)
-        const client = new Paho.MQTT.Client("broker.hivemq.com", Number(8884), "web_client_" + Math.random());
+    let client = null;
+    let heartbeatInterval = null;
+    let secondsElapsed = 0;
+
+    function initializeCloudConnection() {
+        if (!deviceId || !deviceName) {
+            alert("Error: Missing parameters in the address link path.");
+            return;
+        }
+
+        const btn = document.getElementById('radarBtn');
+        btn.innerText = "Connecting to Cloud...";
+        btn.disabled = true;
+
+        // Establish connection to HiveMQ public broker using Secure WebSockets on port 8884
+        client = new Paho.MQTT.Client("broker.hivemq.com", Number(8884), "web_client_" + Math.random());
 
         client.onConnectionLost = (responseObject) => {
-            document.getElementById('netStatus').innerText = "Disconnected from cloud broker.";
-            document.getElementById('netStatus').style.color = "red";
+            document.getElementById('lblSync').innerText = "Disconnected";
+            document.getElementById('lblSync').className = "grid-value";
+            document.getElementById('lblSync').style.color = "red";
+            btn.innerText = "🔊 Activate Radar";
+            btn.disabled = false;
+            btn.classList.remove('connected');
+            clearInterval(heartbeatInterval);
         };
 
         client.connect({
-            useSSL: true, // 🔑 Essential for secure hosting environments!
+            useSSL: true,
             onSuccess: () => {
-                document.getElementById('netStatus').innerText = "Connected! Sending handshake...";
+                btn.innerText = "🔒 Radar Stream Active";
+                btn.classList.add('connected');
+                
+                document.getElementById('lblSync').innerText = "Excellent";
+                document.getElementById('lblSync').className = "grid-value text-green";
+                document.getElementById('lblSync').style.color = "";
 
-                // Create the telemetry payload
-                const payload = JSON.stringify({
-                    id: deviceId,
-                    name: decodeURIComponent(deviceName)
-                });
+                // Fire initial pairing handshake to Flutter app
+                sendTelemetryPayload();
 
-                // Publish to the shared global topic path
-                const message = new Paho.MQTT.Message(payload);
-                message.destinationName = "mydevicefinder/telemetry";
-                client.send(message);
-
-                document.getElementById('netStatus').innerText = "GLOBAL CLOUD HANDSHAKE COMPLETE";
-                document.getElementById('netStatus').className = "online";
+                // Start active time elapsed tracker counter updates
+                secondsElapsed = 0;
+                clearInterval(heartbeatInterval);
+                heartbeatInterval = setInterval(() => {
+                    secondsElapsed++;
+                    document.getElementById('lblHeartbeat').innerText = secondsElapsed + "s";
+                }, 1000);
             },
             onFailure: (err) => {
-                document.getElementById('netStatus').innerText = "Failed to connect to cloud network.";
+                alert("Cloud system initialization timeout.");
+                btn.innerText = "🔊 Activate Radar";
+                btn.disabled = false;
                 console.error(err);
             }
         });
+    }
+
+    function sendTelemetryPayload() {
+        if (client && client.isConnected()) {
+            const payload = JSON.stringify({
+                id: deviceId,
+                name: decodeURIComponent(deviceName)
+            });
+            const message = new Paho.MQTT.Message(payload);
+            message.destinationName = "mydevicefinder/telemetry";
+            client.send(message);
+        }
+    }
+
+    function sendManualPulse() {
+        if (client && client.isConnected()) {
+            sendTelemetryPayload();
+            // Optional temporary visual bounce to signify message execution
+            const currentSync = document.getElementById('lblSync').innerText;
+            document.getElementById('lblSync').innerText = "⚡ PING SENT";
+            setTimeout(() => {
+                document.getElementById('lblSync').innerText = currentSync;
+            }, 800);
+        } else {
+            alert("Please activate the radar stream network connection context first.");
+        }
     }
 </script>
 </body>
