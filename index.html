@@ -28,7 +28,7 @@
         document.getElementById('devName').innerText = decodeURIComponent(deviceName);
 
         // Connect to HiveMQ public broker using WebSockets (port 8000)
-        const client = new Paho.MQTT.Client("broker.hivemq.com", Number(8000), "web_client_" + Math.random());
+        const client = new Paho.MQTT.Client("broker.hivemq.com", Number(8884), "web_client_" + Math.random());
 
         client.onConnectionLost = (responseObject) => {
             document.getElementById('netStatus').innerText = "Disconnected from cloud broker.";
@@ -36,6 +36,7 @@
         };
 
         client.connect({
+            useSSL: true, // 🔑 Essential for secure hosting environments!
             onSuccess: () => {
                 document.getElementById('netStatus').innerText = "Connected! Sending handshake...";
 
