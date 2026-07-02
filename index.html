@@ -222,6 +222,11 @@
     let heartbeatInterval = null;
     let secondsElapsed = 0;
     
+    // 🔐 FIXED: Move these to the true global scope so dismissAlerts() can clear them!
+    let strobeInterval = null;
+    let alarmLoopInterval = null;
+    let vibrationInterval = null;
+    
     // Default open-source fallback loud alert tracker link
     const alertAudio = new Audio('https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg');
 
@@ -261,7 +266,7 @@
     function handleBatteryFallback() {
         const batteryDisplay = document.getElementById('lblBattery');
         if (batteryDisplay) {
-            batteryDisplay.innerText = "100% (Simulated)";
+            document.getElementById('lblBattery').innerText = "100% (Simulated)";
         }
         window.currentBatteryLevel = 100; 
     }
@@ -288,11 +293,6 @@
             // Auto-Retry recovery sequence loop after a 3-second network drop timeout
             setTimeout(initializeCloudConnection, 3000);
         };
-
-        // Global tracking loops for our continuous alerts
-        let strobeInterval = null;
-        let alarmLoopInterval = null;
-        let vibrationInterval = null;
     
         client.onMessageArrived = (message) => {
             try {
@@ -312,7 +312,7 @@
                     alarmLoopInterval = setInterval(() => {
                         alertAudio.currentTime = 0;
                         alertAudio.play().catch(() => {});
-                    }, 3000); // Loops every 3 seconds (adjust based on your track length)
+                    }, 3000); // Loops every 3 seconds
         
                     // 2. 📳 Continuous Loop Vibration Pattern 
                     if (navigator.vibrate) {
@@ -339,7 +339,7 @@
         };
     
         // 🛑 NEW: Dismiss function to kill all loops and reset layout
-        function dismissAlerts() {
+        window.dismissAlerts = function() {
             // Stop the background flashing loop
             if (strobeInterval) {
                 clearInterval(strobeInterval);
