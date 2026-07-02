@@ -27,7 +27,7 @@
             justify-content: center;
             align-items: center;
             min-height: 90vh;
-            transition: background-color 0.15s ease; /* Smooth transition for the emergency flash */
+            transition: background-color 0.15s ease;
         }
 
         .terminal-container {
@@ -109,8 +109,8 @@
         }
 
         .action-btn.connected {
-            background-color: #2E7D32;
-            cursor: default;
+            background-color: #1565C0; /* Blue to indicate persistent standby auto-mode */
+            cursor: pointer;
             box-shadow: none;
         }
 
@@ -173,13 +173,13 @@
 
     <!-- Main Audio Override Gate Card -->
     <div class="main-card">
-        <span class="warning-icon">⚠️</span>
-        <h2 class="card-title">Initialize Web Audio</h2>
-        <p class="card-description">
-            Modern web browsers block audio from playing automatically. Click below to register user interaction and activate tracking overrides.
+        <span class="warning-icon">🛰️</span>
+        <h2 class="card-title" id="cardTitle">System Auto-Arming</h2>
+        <p class="card-description" id="cardDesc">
+            Connecting to background tracking beacons. To guarantee the audio speaker rings when lost, tap the button below once to authorize audio playback.
         </p>
-        <button id="radarBtn" class="action-btn" onclick="initializeCloudConnection()">
-            🔊 Activate Radar
+        <button id="radarBtn" class="action-btn" onclick="manuallyUnlockAudio()">
+            🔄 Initializing Stream...
         </button>
     </div>
 
@@ -214,7 +214,6 @@
     const deviceId = urlParams.get('id');
     const deviceName = urlParams.get('name');
 
-    // Display the incoming URL targets inside the layout rows immediately
     if (deviceId) {
         document.getElementById('lblToken').innerText = deviceId;
     }
@@ -223,56 +222,55 @@
     let heartbeatInterval = null;
     let secondsElapsed = 0;
     
-    // Fallback alarm tracking audio node (uses standard open source digital watch alert)
+    // Default open-source fallback loud alert tracker link
     const alertAudio = new Audio('https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg');
+
+    // 🚀 NEW: Auto-run connection script instantly as soon as the DOM finishes building
+    document.addEventListener("DOMContentLoaded", () => {
+        initializeCloudConnection();
+    });
 
     function initializeCloudConnection() {
         if (!deviceId || !deviceName) {
-            alert("Error: Missing parameters in the address link path.");
+            document.getElementById('radarBtn').innerText = "❌ Missing URL Parameters";
             return;
         }
 
-        // Unlocking browser media player restrictions immediately on user click interaction pass
-        alertAudio.play().then(() => {
-            alertAudio.pause();
-            alertAudio.currentTime = 0;
-        }).catch(e => console.log("Silent initial unlock pass failed or handled:", e));
-
         const btn = document.getElementById('radarBtn');
-        btn.innerText = "Connecting to Cloud...";
-        btn.disabled = true;
 
-        // Establish connection to HiveMQ public broker using Secure WebSockets on port 8884
+        // Setup Secure WebSockets Client connection details
         client = new Paho.MQTT.Client("broker.hivemq.com", Number(8884), "web_client_" + Math.random());
 
         client.onConnectionLost = (responseObject) => {
             document.getElementById('lblSync').innerText = "Disconnected";
             document.getElementById('lblSync').className = "grid-value";
             document.getElementById('lblSync').style.color = "red";
-            btn.innerText = "🔊 Activate Radar";
-            btn.disabled = false;
+            btn.innerText = "🔄 Reconnecting to Cloud...";
             btn.classList.remove('connected');
             clearInterval(heartbeatInterval);
+            
+            // Auto-Retry recovery sequence loop after a 3-second network drop timeout
+            setTimeout(initializeCloudConnection, 3000);
         };
 
-        // 🔑 FIXED: Assigned the correct Paho library function for handling incoming traffic
         client.onMessageArrived = (message) => {
             try {
                 let payload = JSON.parse(message.payloadString);
                 console.log("Inbound Command Intercepted:", payload);
                 
-                // Match the inbound command to this specific tracking session ID
                 if (payload.target_id === deviceId && payload.command === "FIND_DEVICE") {
                     
-                    // 1. 🔊 Play Audio Alert Trigger
-                    alertAudio.play().catch(e => console.log("Audio play blocked by device runtime environment:", e));
+                    // 1. 🔊 Play Audio Alert (Will work seamlessly if user clicked the screen at least once)
+                    alertAudio.play().catch(e => {
+                        console.warn("Audio blocked by browser autoplay rules. Tap screen to unlock sound. Strobe lighting activated anyway!", e);
+                    });
         
-                    // 2. 📳 Trigger Device Vibration Pattern (For phones)
+                    // 2. 📳 Vibration trigger pattern 
                     if (navigator.vibrate) {
                         navigator.vibrate([400, 200, 400, 200, 400, 200, 800]);
                     }
         
-                    // 3. 🚨 Emergency Strobe Light Effect (Flash White and Red)
+                    // 3. 🚨 Emergency Strobe Light Effect (Works 100% of the time, no click required!)
                     let flashCount = 0;
                     const maxFlashes = 14; 
                     const originalBackground = "#0B0F12";
@@ -284,43 +282,37 @@
                             return;
                         }
         
-                        // Alternate between bright emergency white and warning red
                         if (flashCount % 2 === 0) {
-                            document.body.style.backgroundColor = "#FFFFFF"; // Solid White
+                            document.body.style.backgroundColor = "#FFFFFF"; 
                         } else {
-                            document.body.style.backgroundColor = "#D32F2F"; // Warning Crimson Red
+                            document.body.style.backgroundColor = "#D32F2F"; 
                         }
-        
                         flashCount++;
-                    }, 200); // 200ms speed for sharp emergency pulsing
+                    }, 200); 
                 }
             } catch (e) {
-                console.error("Failed to parse incoming command message payload:", e);
+                console.error("Failed to parse incoming payload:", e);
             }
         };
 
         client.connect({
             useSSL: true,
             onSuccess: () => {
-                btn.innerText = "🔒 Radar Stream Active";
+                btn.innerText = "🔊 System Live (Click to verify sound)";
                 btn.classList.add('connected');
                 
+                document.getElementById('cardTitle').innerText = "Tracking Monitor Active";
                 document.getElementById('lblSync').innerText = "Excellent";
                 document.getElementById('lblSync').className = "grid-value text-green";
                 document.getElementById('lblSync').style.color = "";
 
-                // 🔑 FIXED: We must explicitly tell the broker we want to listen to the commands topic!
+                // Listen to commands topic channel
                 client.subscribe("mydevicefinder/commands");
 
-                // Fire initial pairing handshake to Flutter app
+                // Continuous loop heartbeat tracking
                 sendTelemetryPayload();
+                setInterval(sendTelemetryPayload, 4000);
 
-                // Start active telemetry looping background routine every 4 seconds to maintain visibility
-                setInterval(() => {
-                    sendTelemetryPayload();
-                }, 4000);
-
-                // Start active time elapsed tracker counter updates
                 secondsElapsed = 0;
                 clearInterval(heartbeatInterval);
                 heartbeatInterval = setInterval(() => {
@@ -329,12 +321,23 @@
                 }, 1000);
             },
             onFailure: (err) => {
-                alert("Cloud system initialization timeout.");
-                btn.innerText = "🔊 Activate Radar";
-                btn.disabled = false;
-                console.error(err);
+                console.error("MQTT connection failed:", err);
+                setTimeout(initializeCloudConnection, 5000); // Retry after 5s if server timeouts
             }
         });
+    }
+
+    // Explicitly unblocks browser media engine tracking permissions when user tests or taps the button
+    function manuallyUnlockAudio() {
+        alertAudio.play().then(() => {
+            alertAudio.pause();
+            alertAudio.currentTime = 0;
+            
+            const btn = document.getElementById('radarBtn');
+            btn.innerText = "🔒 Sound Unlocked & Active";
+            btn.style.backgroundColor = "#2E7D32";
+            document.getElementById('cardDesc').innerText = "Device audio pipeline is unlocked. If you ping this device from your Flutter app, it will ring loudly and flash emergency strobe patterns.";
+        }).catch(e => console.error("Audio unlock error:", e));
     }
 
     function sendTelemetryPayload() {
@@ -358,7 +361,7 @@
                 document.getElementById('lblSync').innerText = currentSync;
             }, 800);
         } else {
-            alert("Please activate the radar stream network connection context first.");
+            alert("Network connection is currently disconnected.");
         }
     }
 </script>
