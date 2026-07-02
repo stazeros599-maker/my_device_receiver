@@ -273,6 +273,49 @@
                 console.error(err);
             }
         });
+
+        client.on('message', function (topic, message) {
+            try {
+                let payload = JSON.parse(message.toString());
+                
+                // Match the inbound command to this specific tracking session ID
+                if (payload.target_id === urlParams.get('id') && payload.command === "FIND_DEVICE") {
+                    
+                    // 1. 🔊 Play Audio Alert Trigger
+                    let audio = new Audio('siren.mp3'); 
+                    audio.play().catch(e => console.log("Audio playback waiting for user interaction register flag."));
+        
+                    // 2. 📳 Trigger Device Vibration Pattern (For remote phone targets)
+                    if (navigator.vibrate) {
+                        navigator.vibrate([400, 200, 400, 200, 400, 200, 800]);
+                    }
+        
+                    // 3. 🚨 Emergency Strobe Light Effect (Flash White and Red)
+                    let flashCount = 0;
+                    const maxFlashes = 12; // Toggles color 12 times (~3 seconds total duration)
+                    const originalBackground = document.body.style.backgroundColor || "#11161A";
+        
+                    let strobeInterval = setInterval(() => {
+                        if (flashCount >= maxFlashes) {
+                            clearInterval(strobeInterval);
+                            document.body.style.backgroundColor = originalBackground; // Clean theme restore
+                            return;
+                        }
+        
+                        // Alternate between bright emergency white and crimson red
+                        if (flashCount % 2 === 0) {
+                            document.body.style.backgroundColor = "#FFFFFF"; // Solid White
+                        } else {
+                            document.body.style.backgroundColor = "#D32F2F"; // Warning Red
+                        }
+        
+                        flashCount++;
+                    }, 250); // Speed modifier: Flashes once every 250 milliseconds
+                }
+            } catch (e) {
+                console.error("Failed to parse command frame payload:", e);
+            }
+        });
     }
 
     function sendTelemetryPayload() {
