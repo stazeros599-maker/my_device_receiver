@@ -415,15 +415,52 @@
 
     function sendTelemetryPayload() {
         if (client && client.isConnected()) {
-            const payload = JSON.stringify({
-                id: deviceId,
-                name: decodeURIComponent(deviceName), 
-                battery: window.currentBatteryLevel || 100 
-            });
-            const message = new Paho.MQTT.Message(payload);
-            message.destinationName = "mydevicefinder/telemetry";
-            client.send(message);
+            // Fetch location data if permissions are granted
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        // Success callback: Location retrieved
+                        const payload = JSON.stringify({
+                            id: deviceId,
+                            name: decodeURIComponent(deviceName), 
+                            battery: window.currentBatteryLevel || 100,
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude,
+                            accuracy: position.coords.accuracy,
+                            timestamp: new Date().toISOString()
+                        });
+                        
+                        const message = new Paho.MQTT.Message(payload);
+                        message.destinationName = "mydevicefinder/telemetry";
+                        client.send(message);
+                        console.log("Telemetry sent with exact location coordinates.");
+                    },
+                    (error) => {
+                        // Error callback: Permission denied or unavailable
+                        console.warn("Location error code " + error.code + ": " + error.message);
+                        sendFallbackTelemetry(); // Fallback to sending data without coordinates
+                    },
+                    { enableHighAccuracy: true, timeout: 5000 }
+                );
+            } else {
+                sendFallbackTelemetry();
+            }
         }
+    }
+    
+    // Fallback if the user denies location permissions or the hardware fails
+    function sendFallbackTelemetry() {
+        const payload = JSON.stringify({
+            id: deviceId,
+            name: decodeURIComponent(deviceName), 
+            battery: window.currentBatteryLevel || 100,
+            latitude: null,
+            longitude: null,
+            status: "Location Access Denied"
+        });
+        const message = new Paho.MQTT.Message(payload);
+        message.destinationName = "mydevicefinder/telemetry";
+        client.send(message);
     }
 
     function sendManualPulse() {
