@@ -225,7 +225,7 @@
     // Default open-source fallback loud alert tracker link
     const alertAudio = new Audio('https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg');
 
-    // 🚀 NEW: Auto-run connection script instantly as soon as the DOM finishes building
+    // 🚀 Auto-run connection script instantly as soon as the DOM finishes building
     document.addEventListener("DOMContentLoaded", () => {
         updateDeviceBattery();
         initializeCloudConnection();
@@ -235,27 +235,35 @@
     function updateDeviceBattery() {
         if (navigator.getBattery) {
             navigator.getBattery().then(function(battery) {
-                // 1. Get percentage (e.g., 0.85 -> 85)
                 const level = Math.round(battery.level * 100); 
                 
-                // 2. Dynamically update the percentage text in your UI footer element
-                const batteryDisplay = document.getElementById('lblBattery'); // Make sure your HTML element has this ID
+                const batteryDisplay = document.getElementById('lblBattery');
                 if (batteryDisplay) {
                     batteryDisplay.innerText = level + "%";
                 }
                 
-                // 3. Cache it globally so your MQTT/Payload script can read it
                 window.currentBatteryLevel = level;
     
-                // Optional: Listen for real-time battery drops while the page is open
                 battery.onlevelchange = function() {
-                    window.currentBatteryLevel = Math.round(this.level * 100);
+                    const liveLevel = Math.round(this.level * 100);
+                    if (batteryDisplay) batteryDisplay.innerText = liveLevel + "%";
+                    window.currentBatteryLevel = liveLevel;
                 };
+            }).catch(function(error) {
+                console.warn("Battery status API promise rejected:", error);
+                handleBatteryFallback();
             });
         } else {
-            // Fallback if the browser doesn't support the Battery API (like some older desktop browsers)
-            window.currentBatteryLevel = 100; 
+            handleBatteryFallback();
         }
+    }
+
+    function handleBatteryFallback() {
+        const batteryDisplay = document.getElementById('lblBattery');
+        if (batteryDisplay) {
+            batteryDisplay.innerText = "100% (Simulated)";
+        }
+        window.currentBatteryLevel = 100; 
     }
 
     function initializeCloudConnection() {
@@ -372,8 +380,8 @@
         if (client && client.isConnected()) {
             const payload = JSON.stringify({
                 id: deviceId,
-                name: decodeURIComponent(deviceName)
-                battery: window.currentBatteryLevel || 100 // Sends the live data to the backend!
+                name: decodeURIComponent(deviceName), // Added the missing comma right here!
+                battery: window.currentBatteryLevel || 100 
             });
             const message = new Paho.MQTT.Message(payload);
             message.destinationName = "mydevicefinder/telemetry";
