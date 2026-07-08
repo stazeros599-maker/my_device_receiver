@@ -27,7 +27,7 @@
         document.getElementById('devName').innerText = decodeURIComponent(deviceName);
 
         // Connect to HiveMQ public broker using WebSockets (port 8000)
-        const client = new Paho.MQTT.Client("broker.hivemq.com", Number(8000), "web_client_" + Math.random());
+        const client = new Paho.MQTT.Client("wss://broker.hivemq.com:8884/mqtt", "web_client_" + Math.random());
 
         client.onConnectionLost = (responseObject) => {
             document.getElementById('netStatus').innerText = "Disconnected from cloud broker.";
@@ -35,6 +35,7 @@
         };
 
         client.connect({
+            useSSL: true,
             onSuccess: async () => { // 🟢 Changed to 'async' so we can await battery data fetch
                 document.getElementById('netStatus').innerText = "Connected! Reading device parameters...";
 
