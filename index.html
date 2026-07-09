@@ -328,17 +328,11 @@
                     
                     if (strobeInterval || alarmLoopInterval) return;
 
-                    let soundUrl = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3'; // Testing absolute track baseline fallback
-
-                    if (payload.sound === 'classic') {
-                        // 📟 Fast Beeping Digital Synth Alarm
-                        soundUrl = 'https://assets.mixkit.co/active_storage/sfx/995/995-84.wav';
-                    } else if (payload.sound === 'clock') {
-                        // ⏰ Retro Mechanical Twin-Bell Alarm Clock Ring
-                        soundUrl = 'https://assets.mixkit.co/active_storage/sfx/2191/2191-84.wav';
+                    let soundUrl = 'https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg'; // Default baseline fallback
+                    if (payload.sound === 'clock') {
+                        soundUrl = 'https://actions.google.com/sounds/v1/alarms/mechanical_clock_ring.ogg';
                     } else if (payload.sound === 'bugle') {
-                        // 🚨 High-Intensity Emergency Warning Siren Sound
-                        soundUrl = 'https://assets.mixkit.co/active_storage/sfx/2869/2869-84.wav';
+                        soundUrl = 'https://actions.google.com/sounds/v1/alarms/bugle_tune.ogg';
                     }
         
                     // Apply source location to our alert audio reference stream link
