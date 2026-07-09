@@ -327,7 +327,18 @@
                 if (payload.target_id === deviceId && payload.command === "FIND_DEVICE") {
                     
                     if (strobeInterval || alarmLoopInterval) return;
-    
+
+                    let soundUrl = 'https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg'; // Default baseline fallback
+                    if (payload.sound === 'clock') {
+                        soundUrl = 'https://actions.google.com/sounds/v1/alarms/mechanical_clock_ring.ogg';
+                    } else if (payload.sound === 'bugle') {
+                        soundUrl = 'https://actions.google.com/sounds/v1/alarms/fire_bugle_beep.ogg';
+                    }
+        
+                    // Apply source location to our alert audio reference stream link
+                    alertAudio.src = soundUrl;
+                    alertAudio.load();
+                    
                     document.getElementById('btnFoundIt').style.display = "block";
                     
                     alertAudio.play().catch(e => console.warn("Audio autoplay blocked:", e));
