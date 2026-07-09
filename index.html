@@ -229,7 +229,39 @@
     document.addEventListener("DOMContentLoaded", () => {
         updateDeviceBattery();
         initializeCloudConnection();
+        // 🚨 NEW: Initiate global location status listener
+        checkLocationPermissionState();
     });
+
+    // 🚨 NEW FEATURE: Manages permission state queries and handles responsive dynamic transitions
+    function checkLocationPermissionState() {
+        if (navigator.permissions && navigator.permissions.query) {
+            navigator.permissions.query({ name: 'geolocation' }).then(function(permissionStatus) {
+                console.log("Geolocation status state check: " + permissionStatus.state);
+                handleTrackingTextVisibility(permissionStatus.state);
+
+                // Listen for structural state updates if user updates preferences live
+                permissionStatus.onchange = function() {
+                    console.log("Dynamic permission alter event intercepted: " + this.state);
+                    handleTrackingTextVisibility(this.state);
+                };
+            });
+        }
+    }
+
+    // 🚨 NEW UTILITY: Hides or displays 'Tracking Monitor Active' according to system clearance
+    function handleTrackingTextVisibility(state) {
+        const titleElement = document.getElementById('cardTitle');
+        if (!titleElement) return;
+
+        if (state === 'granted') {
+            titleElement.innerText = "Tracking Monitor Active";
+            titleElement.style.display = "block"; // Or standard visualization display styling layout
+        } else {
+            // Keep title hidden or updated to alert mode until permissions clear
+            titleElement.innerText = "Awaiting Location Permission...";
+        }
+    }
 
     // Function to fetch live battery and update the UI/Telemetry
     function updateDeviceBattery() {
@@ -274,7 +306,6 @@
 
         const btn = document.getElementById('radarBtn');
 
-        // 🟢 FIXED: Adjusted structural initialization path string to force SSL handshake on secure WebSocket endpoints
         client = new Paho.MQTT.Client("wss://broker.hivemq.com:8884/mqtt", "web_client_" + Math.random());
 
         client.onConnectionLost = (responseObject) => {
@@ -285,7 +316,6 @@
             btn.classList.remove('connected');
             clearInterval(heartbeatInterval);
             
-            // Auto-Retry recovery sequence loop after a 3-second network drop timeout
             setTimeout(initializeCloudConnection, 3000);
         };
     
@@ -296,20 +326,16 @@
                 
                 if (payload.target_id === deviceId && payload.command === "FIND_DEVICE") {
                     
-                    // If an alarm sequence is already looping, don't stack another one
                     if (strobeInterval || alarmLoopInterval) return;
     
-                    // Reveal the "Found it!" button instantly
                     document.getElementById('btnFoundIt').style.display = "block";
                     
-                    // 1. 🔊 Continuous Loop Audio Alert
                     alertAudio.play().catch(e => console.warn("Audio autoplay blocked:", e));
                     alarmLoopInterval = setInterval(() => {
                         alertAudio.currentTime = 0;
                         alertAudio.play().catch(() => {});
-                    }, 3000); // Loops every 3 seconds
+                    }, 3000);
         
-                    // 2. 📳 Continuous Loop Vibration Pattern 
                     if (navigator.vibrate) {
                         navigator.vibrate([400, 200, 400, 200, 400]);
                         vibrationInterval = setInterval(() => {
@@ -317,7 +343,6 @@
                         }, 2000);
                     }
         
-                    // 3. 🚨 Emergency Strobe Light Effect (Loops indefinitely until stopped)
                     let flashCount = 0;
                     strobeInterval = setInterval(() => {
                         if (flashCount % 2 === 0) {
@@ -333,7 +358,6 @@
             }
         };
     
-        // Dismiss function to kill all loops and reset layout back to its base state
         window.dismissAlerts = function() {
             if (strobeInterval) {
                 clearInterval(strobeInterval);
@@ -351,9 +375,8 @@
                 clearInterval(vibrationInterval);
                 vibrationInterval = null;
             }
-            if (navigator.vibrate) navigator.vibrate(0); // Instantly cancels active vibration
+            if (navigator.vibrate) navigator.vibrate(0); 
     
-            // Restore base root UI color theme specifications
             document.body.style.backgroundColor = "#0B0F12";
             document.getElementById('btnFoundIt').style.display = "none";
             
@@ -361,20 +384,26 @@
         }
 
         client.connect({
-            useSSL: true, // 🟢 FIXED: Explicit flag configuration setting required for secure port binding updates
+            useSSL: true, 
             onSuccess: () => {
                 btn.innerText = "🔊 System Live (Click to verify sound)";
                 btn.classList.add('connected');
                 
-                document.getElementById('cardTitle').innerText = "Tracking Monitor Active";
+                // 🚨 ENHANCED: Check actual permission state dynamically to establish layout setup safely on boot
+                if (navigator.permissions && navigator.permissions.query) {
+                    navigator.permissions.query({ name: 'geolocation' }).then(pStatus => {
+                        handleTrackingTextVisibility(pStatus.state);
+                    });
+                } else {
+                    document.getElementById('cardTitle').innerText = "Tracking Monitor Active";
+                }
+
                 document.getElementById('lblSync').innerText = "Excellent";
                 document.getElementById('lblSync').className = "grid-value text-green";
                 document.getElementById('lblSync').style.color = "";
 
-                // Listen to commands topic channel
                 client.subscribe("mydevicefinder/commands");
 
-                // Continuous loop heartbeat tracking
                 sendTelemetryPayload();
                 setInterval(sendTelemetryPayload, 4000);
 
@@ -387,12 +416,11 @@
             },
             onFailure: (err) => {
                 console.error("MQTT connection failed:", err);
-                setTimeout(initializeCloudConnection, 5000); // Retry after 5s if server timeouts
+                setTimeout(initializeCloudConnection, 5000); 
             }
         });
     }
 
-    // Explicitly unblocks browser media engine tracking permissions when user tests or taps the button
     function manuallyUnlockAudio() {
         alertAudio.play().then(() => {
             alertAudio.pause();
@@ -409,9 +437,11 @@
         if (client && client.isConnected()) {
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
-                    async (position) => { // 🟢 Upgraded to async closure for battery integration updates
+                    async (position) => { 
                         
-                        // 🟢 Fetch live charging state parameter metrics dynamically from core browser hardware layer
+                        // 🚨 FORCED UPDATE: Dynamic permission fallback switch validation check
+                        handleTrackingTextVisibility('granted');
+
                         let isCharging = false;
                         if (navigator.getBattery) {
                             try {
@@ -424,7 +454,7 @@
                             id: deviceId,
                             name: decodeURIComponent(deviceName), 
                             battery: window.currentBatteryLevel || 100,
-                            charging: isCharging, // 🟢 Appended parameter matching Flutter state requirements
+                            charging: isCharging, 
                             latitude: position.coords.latitude,
                             longitude: position.coords.longitude,
                             accuracy: position.coords.accuracy,
@@ -438,6 +468,8 @@
                     },
                     (error) => {
                         console.warn("Location error code " + error.code + ": " + error.message);
+                        // If user denies permission, update title layout instantly
+                        handleTrackingTextVisibility('denied');
                         sendFallbackTelemetry(); 
                     },
                     { enableHighAccuracy: true, timeout: 5000 }
@@ -448,8 +480,7 @@
         }
     }
     
-    // Fallback if the user denies location permissions or the hardware fails
-    async function sendFallbackTelemetry() { // 🟢 Upgraded to async closure for tracking fallback safety
+    async function sendFallbackTelemetry() { 
         let isCharging = false;
         if (navigator.getBattery) {
             try {
@@ -462,7 +493,7 @@
             id: deviceId,
             name: decodeURIComponent(deviceName), 
             battery: window.currentBatteryLevel || 100,
-            charging: isCharging, // 🟢 Appended status
+            charging: isCharging, 
             latitude: null,
             longitude: null,
             status: "Location Access Denied"
