@@ -232,6 +232,32 @@
         checkLocationPermissionState();
     });
 
+    // GLOBALLY SCOPED DISMISS FUNCTION (Moved outside to fix the button click bug)
+    window.dismissAlerts = function() {
+        if (strobeInterval) {
+            clearInterval(strobeInterval);
+            strobeInterval = null;
+        }
+        
+        if (alarmLoopInterval) {
+            clearInterval(alarmLoopInterval);
+            alarmLoopInterval = null;
+        }
+        alertAudio.pause();
+        alertAudio.currentTime = 0;
+
+        if (vibrationInterval) {
+            clearInterval(vibrationInterval);
+            vibrationInterval = null;
+        }
+        if (navigator.vibrate) navigator.vibrate(0); 
+
+        document.body.style.backgroundColor = "#0B0F12";
+        document.getElementById('btnFoundIt').style.display = "none";
+        
+        console.log("Device located successfully. Alert loops terminated.");
+    }
+
     function checkLocationPermissionState() {
         if (navigator.permissions && navigator.permissions.query) {
             navigator.permissions.query({ name: 'geolocation' }).then(function(permissionStatus) {
@@ -322,15 +348,13 @@
                     
                     if (strobeInterval || alarmLoopInterval) return;
 
-                    // 🚨 VERIFIED OPEN HIGH-AVAILABILITY CDN LINKS
-                    let soundUrl = 'https://assets.mixkit.co/active_storage/sfx/995/995-84.wav'; // Default classic beep
+                    let soundUrl = 'https://assets.mixkit.co/active_storage/sfx/995/995-84.wav'; 
                     if (payload.sound === 'clock') {
-                        soundUrl = 'https://assets.mixkit.co/active_storage/sfx/2191/2191-84.wav'; // Twin-bell ring
+                        soundUrl = 'https://assets.mixkit.co/active_storage/sfx/2191/2191-84.wav'; 
                     } else if (payload.sound === 'bugle') {
-                        soundUrl = 'https://assets.mixkit.co/active_storage/sfx/2869/2869-84.wav'; // High siren alert
+                        soundUrl = 'https://assets.mixkit.co/active_storage/sfx/2869/2869-84.wav'; 
                     }
         
-                    // 🚨 CLEAR PIPELINE TRACK CONFLICTS
                     alertAudio.pause();
                     alertAudio.currentTime = 0;
                     alertAudio.src = soundUrl;
@@ -338,9 +362,8 @@
                     
                     document.getElementById('btnFoundIt').style.display = "block";
                     
-                    alertAudio.play().catch(e => console.warn("Audio autoplay blocked by browser sandbox layout context:", e));
+                    alertAudio.play().catch(e => console.warn("Audio autoplay blocked:", e));
                     
-                    // Interval sync loop matches sound clip durations tightly
                     alarmLoopInterval = setInterval(() => {
                         alertAudio.currentTime = 0;
                         alertAudio.play().catch(() => {});
@@ -367,31 +390,6 @@
                 console.error("Failed to parse incoming payload:", e);
             }
         };
-    
-        window.dismissAlerts = function() {
-            if (strobeInterval) {
-                clearInterval(strobeInterval);
-                strobeInterval = null;
-            }
-            
-            if (alarmLoopInterval) {
-                clearInterval(alarmLoopInterval);
-                alarmLoopInterval = null;
-            }
-            alertAudio.pause();
-            alertAudio.currentTime = 0;
-    
-            if (vibrationInterval) {
-                clearInterval(vibrationInterval);
-                vibrationInterval = null;
-            }
-            if (navigator.vibrate) navigator.vibrate(0); 
-    
-            document.body.style.backgroundColor = "#0B0F12";
-            document.getElementById('btnFoundIt').style.display = "none";
-            
-            console.log("Device located successfully. Alert loops terminated.");
-        }
 
         client.connect({
             useSSL: true, 
